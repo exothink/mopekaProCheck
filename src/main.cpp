@@ -6,9 +6,8 @@ C:\Users\EliteDesk\Documents\PlatformIO\Projects\mopekaProCheck\src\main.cpp    
 from:  'Projects\bleExplorer\src\main.cpp'             je 8/30/24
 WORKS!!!
 
-TODO:  Search fror dev adr instead of service.
-peripheral.address() = c7:df:3b:63:7f:41
-
+peripheral.address() = c7:df:3b:63:7f:41  The app only shows the last three bytes. c7:df:3b must be common.(?)
+Advertise interval averages 4 seconds.
 
  */
 
@@ -31,7 +30,7 @@ static const double
     WATER[] = {0.600592, 0.003124, -0.00001368},
     GASOLINE[] = {0.7373417462, -0.001978229885, 0.00000202162}; // same as: DIESEL, LNG, OIL, HYDRAULIC_OIL
 
-static const double *MOPEKA_COEF = WATER; // PROPANE WATER
+static const double *MOPEKA_COEF = PROPANE; // PROPANE WATER
 uint8_t manuDataBuffer[29];
 uint8_t *pManuDataBuffer = &manuDataBuffer[2]; // skips the first two manufacturer ID bytes
 // even though manufacturerDataLength() = 10, the buffer can't be less than 29 or esp32 will throw exceptions
@@ -84,7 +83,7 @@ void loop()
     if (peripheral)
     {
       mResults.rxInterval = (millis() - lastTimeFound) / 1000.0;
-      Serial.print("\n  Advertise period: ");
+      Serial.print("\n  Advertise interval: ");
       Serial.println(mResults.rxInterval, 1);
       lastTimeFound = millis();
       // discovered a peripheral, print out address, local name, and advertised service
@@ -183,30 +182,30 @@ void printVal(int col, u_int8_t data[], int length)
   }
 }
 enum encodedBytes
-{           // byte# val desc
-  sensType, // 0     0c  sens type
-  batt,     // 1     59  batt
-  depth0,   // 2     32  depth0
-  depth1,   // 3     00  depth1
-  depth2    // 4     00  depth2
+{                 // byte# val
+  sensType,       // 0     0c
+  batt,           // 1     59
+  depthAndTemp,   // 2     32
+  depth,          // 3     00
+  depthAndQuality // 4     00
 };
 
-void decodeMopeka(u_int8_t *message)
+void decodeMopeka(u_int8_t *manuData)
 {
-  uint16_t raw = (message[depth2] * 256) + message[depth1];
-  double raw_level = raw & 0x3FFF;         // mm
-  double raw_t = (message[depth0] & 0x7F); // used in level calc
+  uint16_t raw = (manuData[depthAndQuality] * 256) + manuData[depth];
+  double raw_level = raw & 0x3FFF;                // mm
+  double raw_t = (manuData[depthAndTemp] & 0x7F); // used in level calc
   mResults.levelMM = (raw_level * (MOPEKA_COEF[0] + MOPEKA_COEF[1] * raw_t + MOPEKA_COEF[2] * raw_t * raw_t));
   mResults.levelInches = mResults.levelMM / 24.5;
-  mResults.quality_value = static_cast<SensorReadQuality>(message[depth2] >> 6);
-  mResults.v = (float)((message[batt] & 0x7F) / 32.0f);
+  mResults.quality_value = static_cast<SensorReadQuality>(manuData[depthAndQuality] >> 6);
+  mResults.v = (float)((manuData[batt] & 0x7F) / 32.0f);
   mResults.tc = (float)(raw_t - 40);
   mResults.tf = (9.0 / 5 * mResults.tc) + 32;
 }
 
 void printResults()
 {
-   Serial.print("\tLevel:\t\t");
+  Serial.print("\tLevel:\t\t");
   Serial.print(mResults.levelInches, 1);
   Serial.print('\"');
 
