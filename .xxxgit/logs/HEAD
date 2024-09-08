@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 15424d1c29d1975fa532b33a48e653a1585468ab je@EliteDesk <john@exothink.com> 1725652073 -0400	commit (initial): WORKS
+15424d1c29d1975fa532b33a48e653a1585468ab 662c82e3dd8b4a9bdb0f0ccbb530996e0912e61d je@EliteDesk <john@exothink.com> 1725743329 -0400	commit: refactored added rssi
+662c82e3dd8b4a9bdb0f0ccbb530996e0912e61d d1d918543f251852b6753eb0fb6759860af35cad je@EliteDesk <john@exothink.com> 1725743336 -0400	pull --tags origin master: Merge made by the 'recursive' strategy.
+d1d918543f251852b6753eb0fb6759860af35cad 4d43853fe8f76bf2bce76201a3e6c3c286fca342 je@EliteDesk <john@exothink.com> 1725749816 -0400	commit: added quality. better formatting
+4d43853fe8f76bf2bce76201a3e6c3c286fca342 9fa8f13d024b4717e25d03be8401c70c087fc04e je@EliteDesk <john@exothink.com> 1725762626 -0400	commit: added more mediums, cycle time
+9fa8f13d024b4717e25d03be8401c70c087fc04e 23a8fdf2551ee97b56a9d2251d5144d0fe550f78 je@EliteDesk <john@exothink.com> 1725806898 -0400	commit: added a struct for results
