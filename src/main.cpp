@@ -1,4 +1,3 @@
-#include <Arduino.h>
 
 /*
 C:\Users\EliteDesk\Documents\PlatformIO\Projects\mopekaProCheck\src\main.cpp            je 9/6/24
@@ -6,33 +5,52 @@ C:\Users\EliteDesk\Documents\PlatformIO\Projects\mopekaProCheck\src\main.cpp    
 from:  'Projects\bleExplorer\src\main.cpp'             je 8/30/24
 WORKS!!!
 
-peripheral.address() = c7:df:3b:63:7f:41  The app only shows the last three bytes. c7:df:3b must be common.(?)
+peripheral.address() = c7:df:3b:63:7f:41  
+The factory app only shows the last three bytes. c7:df:3b must be common.(?)
+
 Advertise interval averages 4 seconds.
 
- */
+RAM:   [=         ]   9.7% (used 31844 bytes from 327680 bytes)
+Flash: [====      ]  40.8% (used 535157 bytes from 1310720 bytes)
 
+receiving WestPropane:
+  14:38:50|  Advertise interval: 5.0
+  14:38:50|  Westy Propane: 
+  14:38:50|	      addr: 	 	      ee:97:3d:15:da:ce
+  14:38:50|	      Level:	 	      3.3"
+  14:38:50|	      Battery: 	      2.94V
+  14:38:50|	      Temperature: 	  69.8F
+  14:38:50|	      RSSI: 	 	      -94dBm                       // 9/10
+
+iphone says level = 3.1".   -0.17 adjustment to equal iphone app
+                                         
+ */
+#include <Arduino.h>
 #include <ArduinoBLE.h>
 
 // #define DEBUG
 #define VERS "\nMopekaProCheck "
 #define AD_UUID "fee5"
-#define DEV_ADR "c7:df:3b:63:7f:41"
+// #define DEV_ADR "c7:df:3b:63:7f:41"  //MopekaTest  Dev Addr
+#define DEV_ADR "ee:97:3d:15:da:ce"   //WestyPropane Dev Addr.  Used my bleExplorer to get the addr.
 
 #define SCAN_ITERVAL 1000
+#define TEMP_OFFSET  -0.07 // 09/11/24 // -0.17
 
 void printVal(int, uint8_t, int);
 void decodeMopeka(uint8_t *); // takes a pointer to an array
 void printResults();
 
-static const double
+
+static const double  // levelmm =  (MOPEKA_COEF[2]*t^2 + MOPEKA_COEF[1] * t + MOPEKA_COEF[0]) * rawLevel
     AIR[] = {0.153096, 0.000327, -0.000000294},
     PROPANE[] = {0.573045, -0.002822, -0.00000535},
     WATER[] = {0.600592, 0.003124, -0.00001368},
     GASOLINE[] = {0.7373417462, -0.001978229885, 0.00000202162}; // same as: DIESEL, LNG, OIL, HYDRAULIC_OIL
-
+ 
 static const double *MOPEKA_COEF = PROPANE; // PROPANE WATER
 uint8_t manuDataBuffer[29];
-uint8_t *pManuDataBuffer = &manuDataBuffer[2]; // skips the first two manufacturer ID bytes
+uint8_t *pManuDataBuffer = &manuDataBuffer[2]; // skip the first two manufacturer ID bytes
 // even though manufacturerDataLength() = 10, the buffer can't be less than 29 or esp32 will throw exceptions
 
 enum SensorReadQuality
@@ -47,7 +65,7 @@ struct sensData
 {
   double rxInterval;
   int levelMM;
-  int levelInches;
+  float levelInches;
   SensorReadQuality quality_value;
   float v;
   float tc;
@@ -56,7 +74,7 @@ struct sensData
 
 void setup()
 {
-  delay(2000);
+  // delay(2000);
   Serial.begin(9600); // 115200
   Serial.print(VERS);
   Serial.println(__TIMESTAMP__);
@@ -196,7 +214,8 @@ void decodeMopeka(u_int8_t *manuData)
   double raw_level = raw & 0x3FFF;                // mm
   double raw_t = (manuData[depthAndTemp] & 0x7F); // used in level calc
   mResults.levelMM = (raw_level * (MOPEKA_COEF[0] + MOPEKA_COEF[1] * raw_t + MOPEKA_COEF[2] * raw_t * raw_t));
-  mResults.levelInches = mResults.levelMM / 24.5;
+  // mResults.levelInches = mResults.levelMM / 24.5;
+  mResults.levelInches = mResults.levelMM / 24.5 + TEMP_OFFSET;  // adjust to equal iphone app
   mResults.quality_value = static_cast<SensorReadQuality>(manuData[depthAndQuality] >> 6);
   mResults.v = (float)((manuData[batt] & 0x7F) / 32.0f);
   mResults.tc = (float)(raw_t - 40);
@@ -206,12 +225,12 @@ void decodeMopeka(u_int8_t *manuData)
 void printResults()
 {
   Serial.print("\tLevel:\t\t");
-  Serial.print(mResults.levelInches, 1);
+  Serial.print(mResults.levelInches, 2);
   Serial.print('\"');
 
   if (mResults.quality_value < QUALITY_HIGH)
   {
-    Serial.print("  <-- Questionable reading");
+    Serial.print("  <-- Questionable measurement");
     if (mResults.quality_value < QUALITY_MED)
     {
       Serial.print(", not to be trusted");
